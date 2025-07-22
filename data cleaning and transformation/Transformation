@@ -1,0 +1,36 @@
+
+import pandas as pd
+import numpy as np
+
+# Load datasets
+students = pd.read_csv('data/students.csv')
+programs = pd.read_csv('data/programs.csv')
+enrollments = pd.read_csv('data/enrollments.csv')
+performance = pd.read_csv('data/performance.csv')
+
+# Clean students
+students.drop_duplicates(subset='student_id', inplace=True)
+students['program_type'] = students['program_type'].str.upper().str.strip()
+students['gender'] = students['gender'].fillna('Not Specified')
+students['age'] = students['age'].fillna(students['age'].median())
+
+# Clean enrollments
+enrollments['year'] = enrollments['year'].astype(str).str.extract(r'(\d{4})')
+
+# Clean performance
+performance['gpa'] = performance['gpa'].fillna(performance['gpa'].mean())
+
+# Merge datasets
+merged = pd.merge(enrollments, students, on='student_id', how='left')
+merged = pd.merge(merged, performance, on='student_id', how='left')
+merged = pd.merge(merged, programs, on='program_id', how='left')
+
+# Generate Year-over-Year Summary
+summary = merged.groupby(['year', 'program_type']).agg({
+    'student_id': 'count',
+    'gpa': 'mean'
+}).reset_index().rename(columns={'student_id': 'enrollments', 'gpa': 'avg_gpa'})
+
+# Save outputs
+merged.to_csv('data/merged_dataset.csv', index=False)
+summary.to_csv('data/yoy_summary.csv', index=False)
