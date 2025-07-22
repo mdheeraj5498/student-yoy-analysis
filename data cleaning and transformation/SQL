@@ -1,0 +1,40 @@
+
+-- Cleaning: Normalize program_type in students
+UPDATE students
+SET program_type = UPPER(program_type);
+
+-- Cleaning: Extract consistent year format from enrollments
+UPDATE enrollments
+SET year = CASE
+    WHEN year ~ 'FY\d{4}' THEN RIGHT(year, 4)
+    WHEN year ~ '\d{2}-\d{2}' THEN '20' || LEFT(year, 2)
+    ELSE year
+END;
+
+-- Removing duplicates
+DELETE FROM students
+WHERE student_id IN (
+    SELECT student_id FROM (
+        SELECT student_id, COUNT(*) OVER(PARTITION BY student_id) AS cnt
+        FROM students
+    ) sub
+    WHERE cnt > 1
+);
+
+-- Integration: Join all tables
+SELECT 
+    s.student_id,
+    s.name,
+    s.gender,
+    s.age,
+    s.program_type,
+    s.country,
+    s.education_background,
+    s.work_experience,
+    e.year,
+    p.course_name,
+    pf.gpa
+FROM students s
+JOIN enrollments e ON s.student_id = e.student_id
+JOIN programs p ON e.program_id = p.program_id
+JOIN performance pf ON s.student_id = pf.student_id;
